@@ -598,7 +598,10 @@
 <div id="toast"></div>
 
 <script>
-const API = 'http://localhost:8000';
+// Autodetect API URL based on host so it works locally and on the server via Nginx
+const API = window.location.hostname === 'localhost' && window.location.port !== '8000' 
+  ? 'http://localhost:8000' 
+  : '/api';
 let token = localStorage.getItem('pmct_token');
 let currentMode = 'paper';
 let botRunning = false;
@@ -1173,7 +1176,16 @@ function renderHistory(history) {
 
 function connectWS() {
   if (!token) return;
-  ws = new WebSocket(`ws://localhost:8000/ws/${token}`);
+  
+  let wsUrl;
+  if (API.startsWith('http')) {
+      wsUrl = API.replace(/^http/, 'ws') + '/ws/' + token;
+  } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const cleanAPI = API.endsWith('/') ? API.slice(0, -1) : API;
+      wsUrl = protocol + '//' + window.location.host + cleanAPI + '/ws/' + token;
+  }
+  ws = new WebSocket(wsUrl);
   ws.onmessage = (e) => {
     const event = JSON.parse(e.data);
     if (event.type === 'new_trade' && event.mode === currentMode) {

@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+supabase
+py-clob-client
+requests
+web3
+eth-account
+python-jose[cryptography]
+websockets

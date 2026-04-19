@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  polymirror-backend:
+    build: .
+    container_name: polymirror_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "8000"
+
+  polymirror-nginx:
+    image: nginx:1.27.0-alpine
+    container_name: polymirror_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"   # Exposing proxy on port 8000 for the host (avoids conflicts)
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    depends_on:
+      - polymirror-backend
