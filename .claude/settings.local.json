@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(venv/bin/python test_history.py)",
+      "Bash(venv/bin/pip install *)",
+      "Bash(venv/bin/python -c \"import requests; print\\(requests.__version__\\)\")",
+      "Bash(venv/bin/pip list *)",
+      "Bash(venv/bin/python --version)",
+      "Bash(venv/bin/python3.11 test_history.py)",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://data-api.polymarket.com/activity?user=0x633512f5a6da9b8cb8bc8595bf3afccfa0776b76&limit=3\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://data-api.polymarket.com/trades?user=0x633512f5a6da9b8cb8bc8595bf3afccfa0776b76&limit=3\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://data-api.polymarket.com/activity?limit=3\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://data-api.polymarket.com/trades?limit=3\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://data-api.polymarket.com/trades?user=0x3f47a3a92832f7b65e3a2146e044ad51a5f5ae5d&limit=3\")",
+      "Bash(curl -s \"https://clob.polymarket.com/price?token_id=37742486637455702886870420048382082568055348867853750888664887691739682119529&side=buy\")",
+      "Bash(curl -s \"https://data-api.polymarket.com/prices?token_id=37742486637455702886870420048382082568055348867853750888664887691739682119529\")",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://data-api.polymarket.com/trades?limit=200\")",
+      "Bash(venv/bin/python3.11 -c \"import json,sys; d=json.load\\(sys.stdin\\); from collections import Counter; c=Counter\\(t['proxyWallet'] for t in d\\); print\\('top active wallets:'\\); [print\\(w, n\\) for w,n in c.most_common\\(5\\)]\")",
+      "Bash(venv/bin/python3.11 paper_demo.py)",
+      "Bash(venv/bin/python3.11 -c \"import server; print\\('server.py imports OK'\\)\")",
+      "Bash(venv/bin/python3.11 -c \"import server; print\\('OK'\\)\")",
+      "Bash(curl -s \"https://lb-api.polymarket.com/profit?window=1d&limit=5\")",
+      "Bash(curl -s \"https://lb-api.polymarket.com/volume?window=1d&limit=5\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:8000/suggested-wallets)",
+      "Bash(lsof -ti:8000)",
+      "Bash(curl -s -X POST -H \"Content-Type: application/json\" -d '{\"wallet_address\":\"0x0000000000000000000000000000000000000001\"}' http://127.0.0.1:8000/auth/nonce)",
+      "Bash(curl -s http://127.0.0.1:8000/openapi.json)",
+      "Bash(venv/bin/python3.11 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('\\\\n'.join\\(sorted\\(d['paths'].keys\\(\\)\\)\\)\\)\")",
+      "Bash(time curl *)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' 'https://lb-api.polymarket.com/profit?window=__TRACKED_VAR__&limit=2')",
+      "Bash(ps -o pid,etime,command -p 78246,83137)",
+      "Bash(venv/bin/python3.11 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('routes:', len\\(d['paths']\\)\\); print\\('has suggested-wallets:', '/suggested-wallets' in d['paths']\\); print\\('has approve-contracts:', '/user/approve-contracts' in d['paths']\\)\")"
+    ]
+  }
+}

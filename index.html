@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PolyMirror — Copy Trading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #17171f;
+    --border: rgba(255,255,255,0.07);
+    --border-bright: rgba(255,255,255,0.13);
+    --text: #f0f0f8;
+    --text-2: #8888aa;
+    --text-3: #44445a;
+    --accent: #7c6fff;
+    --accent-dim: rgba(124,111,255,0.15);
+    --green: #3dffa0;
+    --green-dim: rgba(61,255,160,0.12);
+    --red: #ff5f7a;
+    --red-dim: rgba(255,95,122,0.12);
+    --amber: #ffbb57;
+    --amber-dim: rgba(255,187,87,0.12);
+    --paper: #57c4ff;
+    --paper-dim: rgba(87,196,255,0.12);
+    --font: 'Syne', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --r: 10px;
+    --r-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 1.6; min-height: 100vh; }
+
+  /* ── Login ── */
+  #login-screen {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 32px;
+    background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(124,111,255,0.18) 0%, transparent 70%);
+  }
+  .login-logo { font-size: 38px; font-weight: 700; letter-spacing: -1px; }
+  .login-logo span { color: var(--accent); }
+  .login-sub { color: var(--text-2); font-size: 15px; text-align: center; }
+  .btn-connect {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--accent); color: #fff; border: none;
+    padding: 14px 32px; border-radius: var(--r); font-size: 15px;
+    font-family: var(--font); font-weight: 700; cursor: pointer;
+    letter-spacing: 0.02em; transition: opacity 0.15s;
+  }
+  .btn-connect:hover { opacity: 0.85; }
+  .metamask-icon { width: 22px; height: 22px; }
+
+  /* ── App shell ── */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+  #app.visible { display: flex; }
+
+  /* ── Top bar ── */
+  .topbar {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 28px; border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .topbar-logo { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
+  .topbar-logo span { color: var(--accent); }
+
+  /* Mode toggle */
+  .mode-toggle {
+    display: flex; background: var(--bg); border-radius: var(--r-sm);
+    border: 1px solid var(--border); overflow: hidden; margin-left: auto;
+  }
+  .mode-btn {
+    padding: 7px 20px; border: none; background: transparent;
+    font-family: var(--font); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.15s; color: var(--text-2);
+    letter-spacing: 0.03em;
+  }
+  .mode-btn.active-paper { background: var(--paper-dim); color: var(--paper); }
+  .mode-btn.active-live { background: var(--green-dim); color: var(--green); }
+
+  /* Bot toggle */
+  .bot-pill {
+    display: flex; align-items: center; gap: 7px;
+    padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border);
+    font-size: 12px; font-family: var(--mono); cursor: pointer;
+    background: transparent; color: var(--text-2); transition: all 0.15s;
+  }
+  .bot-pill.running { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+  .bot-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .bot-dot.pulse { animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  .wallet-chip {
+    font-family: var(--mono); font-size: 12px; color: var(--text-2);
+    background: var(--surface2); padding: 6px 12px; border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+
+  .btn-logout { background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 6px 14px; border-radius: var(--r-sm); font-size: 12px; font-family: var(--font); cursor: pointer; }
+  .btn-logout:hover { border-color: var(--border-bright); color: var(--text); }
+
+  /* ── Main layout ── */
+  .main { display: grid; grid-template-columns: 300px 1fr; flex: 1; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px; display: flex; flex-direction: column; gap: 20px;
+    background: var(--surface);
+  }
+  .sidebar-section-title {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: 10px;
+  }
+
+  /* Wallet list */
+  .wallet-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: var(--r-sm);
+    border: 1px solid var(--border); background: var(--surface2);
+    margin-bottom: 8px; transition: border-color 0.15s;
+  }
+  .wallet-item:hover { border-color: var(--border-bright); }
+  .wallet-avatar {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+    background: var(--accent-dim); color: var(--accent);
+  }
+  .wallet-info { flex: 1; min-width: 0; }
+  .wallet-name { font-size: 13px; font-weight: 500; }
+  .wallet-addr { font-family: var(--mono); font-size: 10px; color: var(--text-2); }
+  .wallet-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    width: 26px; height: 26px; border-radius: 6px; border: 1px solid var(--border);
+    background: transparent; color: var(--text-2); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 12px;
+    transition: all 0.1s;
+  }
+  .icon-btn:hover { border-color: var(--border-bright); color: var(--text); }
+  .icon-btn.danger:hover { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+  .badge-on { background: var(--green-dim); color: var(--green); font-size: 10px; padding: 2px 7px; border-radius: 20px; }
+  .badge-off { background: var(--surface); color: var(--text-3); font-size: 10px; padding: 2px 7px; border-radius: 20px; border: 1px solid var(--border); }
+
+  /* Add wallet form */
+  .add-wallet-form { display: flex; flex-direction: column; gap: 8px; }
+  .input-field {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: var(--r-sm); padding: 9px 12px; color: var(--text);
+    font-family: var(--font); font-size: 13px; width: 100%;
+    outline: none; transition: border-color 0.15s;
+  }
+  .input-field::placeholder { color: var(--text-3); }
+  .input-field:focus { border-color: var(--accent); }
+  .btn-add {
+    background: var(--accent-dim); border: 1px solid var(--accent);
+    color: var(--accent); border-radius: var(--r-sm); padding: 9px;
+    font-family: var(--font); font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s; letter-spacing: 0.02em;
+  }
+  .btn-add:hover { background: var(--accent); color: #fff; }
+
+  /* Settings */
+  .setting-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px;
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-label { color: var(--text-2); }
+  .setting-input {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 5px; color: var(--text); font-family: var(--mono);
+    font-size: 12px; padding: 4px 8px; width: 70px; text-align: right; outline: none;
+  }
+  .setting-input:focus { border-color: var(--accent); }
+  .toggle-switch {
+    width: 36px; height: 20px; border-radius: 10px; background: var(--surface2);
+    border: 1px solid var(--border); cursor: pointer; position: relative;
+    transition: background 0.2s;
+  }
+  .toggle-switch.on { background: var(--accent); border-color: var(--accent); }
+  .toggle-knob {
+    position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+    border-radius: 50%; background: white; transition: left 0.2s;
+  }
+  .toggle-switch.on .toggle-knob { left: 18px; }
+  .btn-save {
+    margin-top: 10px; width: 100%; background: transparent;
+    border: 1px solid var(--border); color: var(--text-2);
+    border-radius: var(--r-sm); padding: 8px; font-family: var(--font);
+    font-size: 12px; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-save:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Content ── */
+  .content { padding: 24px 28px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; }
+
+  /* Stats grid */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 16px 18px;
+  }
+  .stat-label { font-size: 11px; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -1px; }
+  .stat-value.pos { color: var(--green); }
+  .stat-value.neg { color: var(--red); }
+  .stat-value.neutral { color: var(--text); }
+  .stat-value.accent { color: var(--accent); }
+
+  /* Section header */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .section-title { font-size: 13px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-2); }
+
+  /* Trades table */
+  .trades-table { width: 100%; border-collapse: collapse; }
+  .trades-table th {
+    text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--text-3); padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .trades-table td {
+    padding: 11px 12px; border-bottom: 1px solid var(--border);
+    font-size: 13px; vertical-align: middle;
+  }
+  .trades-table tr:last-child td { border-bottom: none; }
+  .trades-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .market-cell { max-width: 240px; }
+  .market-q { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .market-sub { font-size: 11px; color: var(--text-2); font-family: var(--mono); }
+  .badge-yes { background: var(--accent-dim); color: var(--accent); font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 700; }
+  .badge-no { background: var(--red-dim); color: var(--red); font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 700; }
+  .badge-open { background: var(--amber-dim); color: var(--amber); font-size: 10px; padding: 2px 8px; border-radius: 20px; }
+  .badge-closed { background: var(--surface2); color: var(--text-3); font-size: 10px; padding: 2px 8px; border-radius: 20px; }
+  .pnl-pos { color: var(--green); font-family: var(--mono); font-size: 13px; }
+  .pnl-neg { color: var(--red); font-family: var(--mono); font-size: 13px; }
+  .pnl-zero { color: var(--text-3); font-family: var(--mono); font-size: 13px; }
+  .mono-sm { font-family: var(--mono); font-size: 12px; color: var(--text-2); }
+
+  /* Mode indicator banner */
+  .mode-banner {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; border-radius: var(--r-sm); font-size: 13px;
+    border: 1px solid;
+  }
+  .mode-banner.paper { background: var(--paper-dim); border-color: rgba(87,196,255,0.3); color: var(--paper); }
+  .mode-banner.live { background: var(--green-dim); border-color: rgba(61,255,160,0.3); color: var(--green); }
+
+  /* Modal overlay */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 100;
+    background: rgba(0,0,0,0.7); align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border-bright);
+    border-radius: var(--r); padding: 28px; max-width: 420px; width: 90%;
+  }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 8px; }
+  .modal-body { font-size: 14px; color: var(--text-2); margin-bottom: 20px; line-height: 1.7; }
+  .modal-trades-list { margin: 12px 0; max-height: 150px; overflow-y: auto; }
+  .modal-trade-item { font-size: 12px; color: var(--text-2); font-family: var(--mono); padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 8px 18px; border-radius: var(--r-sm); font-family: var(--font); font-size: 13px; cursor: pointer; }
+  .btn-cancel:hover { border-color: var(--border-bright); color: var(--text); }
+  .btn-confirm-remove { background: var(--red-dim); border: 1px solid var(--red); color: var(--red); padding: 8px 18px; border-radius: var(--r-sm); font-family: var(--font); font-size: 13px; cursor: pointer; font-weight: 700; }
+  .btn-confirm-remove:hover { background: var(--red); color: #fff; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    background: var(--surface2); border: 1px solid var(--border-bright);
+    border-radius: var(--r); padding: 12px 20px; font-size: 13px;
+    transform: translateY(20px); opacity: 0; transition: all 0.2s; pointer-events: none;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.success { border-color: var(--green); color: var(--green); }
+  #toast.error { border-color: var(--red); color: var(--red); }
+
+  .table-wrapper { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+  .empty-state { text-align: center; padding: 40px; color: var(--text-3); font-size: 14px; }
+  .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- ── Login Screen ── -->
+<div id="login-screen">
+  <div>
+    <div class="login-logo">Poly<span>Mirror</span></div>
+  </div>
+  <p class="login-sub">Connect your wallet to start copy trading on Polymarket</p>
+  <button class="btn-connect" onclick="connectMetaMask()">
+    <svg class="metamask-icon" viewBox="0 0 35 33" fill="none">
+      <path d="M32.96 1L19.38 10.9l2.5-5.9L32.96 1z" fill="#E17726" stroke="#E17726" stroke-width=".25"/>
+      <path d="M2.04 1l13.46 9.97-2.37-5.97L2.04 1z" fill="#E27625" stroke="#E27625" stroke-width=".25"/>
+      <path d="M28.16 23.53l-3.61 5.53 7.73 2.13 2.22-7.54-6.34-.12z" fill="#E27625" stroke="#E27625" stroke-width=".25"/>
+      <path d="M.5 23.65l2.21 7.54 7.72-2.13-3.6-5.53-6.33.12z" fill="#E27625" stroke="#E27625" stroke-width=".25"/>
+      <path d="M10.03 14.51l-2.16 3.27 7.7.35-.26-8.28-5.28 4.66z" fill="#E27625" stroke="#E27625" stroke-width=".25"/>
+      <path d="M24.97 14.51l-5.35-4.73-.17 8.35 7.69-.35-2.17-3.27z" fill="#E27625" stroke="#E27625" stroke-width=".25"/>
+      <path d="M10.43 29.06l4.64-2.24-4-3.12-.64 5.36z" fill="#E27625" stroke="#E27625" stroke-width=".25"/>
+      <path d="M19.93 26.82l4.63 2.24-.63-5.36-4 3.12z" fill="#E27625" stroke="#E27625" stroke-width=".25"/>
+    </svg>
+    Connect MetaMask
+  </button>
+  <p id="login-error" style="color:var(--red);font-size:13px;display:none;"></p>
+</div>
+
+<!-- ── App ── -->
+<div id="app">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-logo">Poly<span>Mirror</span></div>
+    <div class="mode-toggle">
+      <button class="mode-btn active-paper" id="btn-paper" onclick="switchMode('paper')">📄 Paper</button>
+      <button class="mode-btn" id="btn-live" onclick="switchMode('live')">🟢 Live</button>
+    </div>
+    <button class="bot-pill" id="bot-pill" onclick="toggleBot()">
+      <span class="bot-dot" id="bot-dot"></span>
+      <span id="bot-pill-text">Bot stopped</span>
+    </button>
+    <div class="wallet-chip" id="wallet-chip">0x0000...0000</div>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- Live-mode gate: blocks the entire app until a private key is connected -->
+  <div id="live-gate" style="display:none;position:fixed;inset:0;background:rgba(8,10,14,0.92);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(6px);overflow-y:auto;padding:30px 0;">
+    <!-- Step 1 -->
+    <div id="gate-step-1" style="background:var(--surface);border:1px solid var(--border-bright);border-radius:14px;padding:28px;max-width:560px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+      <div style="font-size:22px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:24px;">🔒</span> Live Trading Wallet Required
+      </div>
+      <p style="color:var(--text-2);font-size:13px;line-height:1.6;margin:10px 0 16px;">
+        Live mode places <strong>real on-chain orders</strong> on Polymarket.
+        Paste the private key of a Polygon wallet that holds USDC.
+        It's encrypted before being stored and never sent back to the browser.
+      </p>
+
+      <details style="margin-bottom:16px;background:var(--bg-2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">
+        <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--accent);">
+          📘 How to get a private key (click to expand)
+        </summary>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-2);line-height:1.7;">
+          <p style="margin-bottom:10px;color:var(--text-1);"><strong>Recommended: create a fresh wallet just for this bot.</strong> Don't reuse your main MetaMask key.</p>
+
+          <p style="margin:10px 0 4px;color:var(--text-1);"><strong>Option A — New MetaMask account (easiest):</strong></p>
+          <ol style="margin:0 0 12px 18px;padding:0;">
+            <li>Open MetaMask → click the account icon → <em>Add account or hardware wallet</em> → <em>Add a new account</em>.</li>
+            <li>Switch to the new account, switch network to <strong>Polygon</strong>.</li>
+            <li>Click the three-dot menu → <em>Account details</em> → <em>Show private key</em> (enter password).</li>
+            <li>Copy the key (starts with <code>0x…</code>) and paste below.</li>
+          </ol>
+
+          <p style="margin:10px 0 4px;color:var(--text-1);"><strong>Option B — Generate one (most secure):</strong></p>
+          <ol style="margin:0 0 12px 18px;padding:0;">
+            <li>Visit <a href="https://vanity-eth.tk/" target="_blank" style="color:var(--accent);">vanity-eth.tk</a> (or use <code>cast wallet new</code>) to generate a key locally.</li>
+            <li>Save the address + private key somewhere safe.</li>
+          </ol>
+
+          <p style="margin:10px 0 4px;color:var(--text-1);"><strong>Then fund the wallet's EOA on Polygon:</strong></p>
+          <ol style="margin:0 0 12px 18px;padding:0;">
+            <li>Bridge or buy <strong>USDC.e</strong> on Polygon to the wallet address — this is what the bot will spend on trades.</li>
+            <li>Send a small amount of <strong>MATIC</strong> (≈ $1) for gas.</li>
+            <li>We will prompt you to <em>Approve USDC/CTF</em> in the next step (one-time, costs gas).</li>
+          </ol>
+
+          <p style="margin-top:10px;padding:8px 10px;background:rgba(255,180,0,0.08);border-left:3px solid #ffb400;color:var(--text-1);font-size:11px;border-radius:4px;">
+            ⚠ The funds must be on the wallet's <strong>EOA address directly</strong>. If you use the Polymarket web app, your USDC is in a separate <em>proxy wallet</em> the bot can't see — that key won't work.
+          </p>
+        </div>
+      </details>
+
+      <input type="password" id="gate-pk-input" class="input-field" placeholder="0x… private key" autocomplete="off" style="font-family:var(--mono);" />
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn-add" id="gate-save-btn" style="flex:1;" onclick="gateSaveKey()">Connect &amp; enter Live mode</button>
+        <button class="btn-cancel" onclick="gateCancel()">Back to Paper</button>
+      </div>
+      <p id="gate-error" style="color:var(--red);font-size:12px;margin-top:12px;display:none;"></p>
+    </div>
+
+    <!-- Step 2 -->
+    <div id="gate-step-2" style="display:none;background:var(--surface);border:1px solid var(--accent);border-radius:14px;padding:28px;max-width:560px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+      <div style="font-size:22px;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:24px;">✅</span> Key Connected
+      </div>
+      <p style="color:var(--text-2);font-size:13px;line-height:1.6;margin:10px 0 16px;">
+        Before trading, the <strong>Polymarket Exchange Smart Contract</strong> needs one-time permission to spend your USDC and CTF (shares). This setup requires a small amount of MATIC for gas.
+      </p>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn-add" id="gate-approve-btn" style="flex:1;" onclick="gateApproveContracts()">Approve USDC/CTF (One-time)</button>
+        <button class="btn-cancel" onclick="gateFinish()">Skip for now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Live wallet (only in Live mode) -->
+      <div id="live-wallet-panel" style="display:none;margin-bottom:22px;">
+        <div class="sidebar-section-title">Live Trading Wallet</div>
+        <div id="lw-disconnected" style="display:none;">
+          <p style="font-size:12px;color:var(--text-3);margin-bottom:8px;line-height:1.5;">
+            Paste the private key of the Polygon wallet the bot should trade from.
+            It's encrypted before being stored.
+          </p>
+          <input class="input-field" id="lw-pk-input" type="password" placeholder="0x… private key" autocomplete="off" />
+          <button class="btn-add" id="lw-save-btn" onclick="saveLivePrivateKey()">Connect key</button>
+        </div>
+        <div id="lw-connected" style="display:none;">
+          <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;">Wallet</div>
+          <div id="lw-addr" style="font-family:var(--mono);font-size:13px;margin-bottom:10px;"></div>
+          <div style="display:flex;gap:10px;margin-bottom:10px;">
+            <div style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;">
+              <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;">USDC</div>
+              <div id="lw-usdc" style="font-size:16px;font-weight:700;">$0.00</div>
+            </div>
+            <div style="flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;">
+              <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;">MATIC</div>
+              <div id="lw-matic" style="font-size:16px;font-weight:700;">0</div>
+            </div>
+          </div>
+          <button class="btn-add" style="background:transparent;border:1px solid var(--border);color:var(--text-2);" onclick="refreshLiveWallet()">Refresh balance</button>
+          <button class="btn-add" style="background:transparent;border:1px solid var(--red);color:var(--red);margin-top:6px;" onclick="disconnectLiveKey()">Disconnect key</button>
+        </div>
+      </div>
+
+      <!-- Suggested top performers -->
+      <div style="margin-bottom:22px;">
+        <div class="sidebar-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Top Performers</span>
+          <select id="sw-window" onchange="loadSuggestedWallets()" style="background:var(--bg-2);color:var(--text-1);border:1px solid var(--border);border-radius:4px;font-size:11px;padding:2px 4px;">
+            <option value="1d">1 day</option>
+            <option value="7d" selected>7 days</option>
+            <option value="30d">30 days</option>
+            <option value="all">All time</option>
+          </select>
+        </div>
+        <div id="suggested-list" style="font-size:12px;">
+          <p style="color:var(--text-3);">Loading…</p>
+        </div>
+      </div>
+
+      <!-- Tracked wallets -->
+      <div>
+        <div class="sidebar-section-title">Tracked Wallets</div>
+        <div id="wallet-list"></div>
+        <div class="add-wallet-form">
+          <input class="input-field" id="new-wallet-addr" placeholder="0x wallet address" />
+          <input class="input-field" id="new-wallet-name" placeholder="Nickname (e.g. Whale #1)" />
+          <button class="btn-add" onclick="addWallet()">+ Add Wallet</button>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div>
+        <div class="sidebar-section-title">Copy Settings</div>
+        <div class="setting-row">
+          <span class="setting-label">Amount per trade (USDC)</span>
+          <input type="number" class="setting-input" id="s-amount" value="20" min="1" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Min original size</span>
+          <input type="number" class="setting-input" id="s-min" value="10" min="1" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Max trades/wallet/day</span>
+          <input type="number" class="setting-input" id="s-max" value="5" min="1" max="100" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Poll interval (secs)</span>
+          <input type="number" class="setting-input" id="s-poll" value="30" min="10" />
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Copy sells / exits</span>
+          <div class="toggle-switch on" id="t-sells" onclick="toggleSetting('t-sells')">
+            <div class="toggle-knob"></div>
+          </div>
+        </div>
+        <button class="btn-save" onclick="saveSettings()">Save settings</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="mode-banner paper" id="mode-banner">
+        <span>📄</span>
+        <span><strong>Paper Mode</strong> — Trades are simulated. No real money moves.</span>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Invested</div>
+          <div class="stat-value neutral" id="stat-invested">$0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Net P&L</div>
+          <div class="stat-value neutral" id="stat-pnl">$0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">ROI</div>
+          <div class="stat-value neutral" id="stat-roi">0%</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Open Trades</div>
+          <div class="stat-value accent" id="stat-open">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Win Rate</div>
+          <div class="stat-value neutral" id="stat-winrate">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Trades</div>
+          <div class="stat-value neutral" id="stat-total">0</div>
+        </div>
+      </div>
+
+      <!-- Trade feed -->
+      <div>
+        <div class="section-header">
+          <span class="section-title">Copied Trades</span>
+          <span id="trades-spinner" style="display:none;"><span class="spinner"></span></span>
+        </div>
+        <div class="table-wrapper">
+          <table class="trades-table" id="trades-table">
+            <thead>
+              <tr>
+                <th>Market</th>
+                <th>Source</th>
+                <th>Side</th>
+                <th>Price</th>
+                <th>Shares</th>
+                <th>Invested</th>
+                <th>P&L</th>
+                <th>Status</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="trades-tbody">
+              <tr><td colspan="9" class="empty-state">No trades yet. Add wallets and start the bot.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Target Wallets History -->
+      <div style="margin-top: 32px;">
+        <div class="section-header">
+          <span class="section-title">Trader History (Not Copied)</span>
+          <span id="history-spinner" style="display:none;"><span class="spinner"></span></span>
+        </div>
+        <div class="table-wrapper">
+          <table class="trades-table" id="history-table">
+            <thead>
+              <tr>
+                <th>Market</th>
+                <th>Source Wallet</th>
+                <th>Side</th>
+                <th>Price</th>
+                <th>Size</th>
+                <th>Time (Est)</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody">
+              <tr><td colspan="6" class="empty-state">No historical trades found. Add tracked wallets first.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Remove wallet modal -->
+<div class="modal-overlay" id="remove-modal">
+  <div class="modal">
+    <div class="modal-title">⚠️ Open trades detected</div>
+    <div class="modal-body" id="remove-modal-body"></div>
+    <div class="modal-trades-list" id="remove-modal-trades"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeRemoveModal()">Cancel</button>
+      <button class="btn-confirm-remove" onclick="confirmRemoveWallet()">Remove anyway</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:8000';
+let token = localStorage.getItem('pmct_token');
+let currentMode = 'paper';
+let botRunning = false;
+let walletToRemove = null;
+let ws = null;
+let refreshInterval = null;
+
+// ── MetaMask auth ──────────────────────────────────────────
+
+async function connectMetaMask() {
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+
+  if (!window.ethereum) {
+    errEl.textContent = 'MetaMask not detected. Please install it first.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const address = accounts[0];
+
+    // 1. Get nonce
+    const nonceRes = await fetch(`${API}/auth/nonce`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: address }),
+    });
+    const { message } = await nonceRes.json();
+
+    // 2. Sign with MetaMask
+    const signature = await window.ethereum.request({
+      method: 'personal_sign',
+      params: [message, address],
+    });
+
+    // 3. Verify
+    const verifyRes = await fetch(`${API}/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wallet_address: address, signature }),
+    });
+    if (!verifyRes.ok) throw new Error('Verification failed');
+    const { token: t } = await verifyRes.json();
+
+    token = t;
+    localStorage.setItem('pmct_token', t);
+    document.getElementById('wallet-chip').textContent = address.slice(0,6) + '...' + address.slice(-4);
+    showApp();
+  } catch (e) {
+    errEl.textContent = e.message || 'Connection failed';
+    errEl.style.display = 'block';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('pmct_token');
+  token = null;
+  if (ws) ws.close();
+  clearInterval(refreshInterval);
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+// ── App init ──────────────────────────────────────────────
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  loadAll();
+  connectWS();
+  refreshInterval = setInterval(() => { loadStats(); loadTrades(); loadHistory(); }, 15000);
+}
+
+async function loadAll() {
+  await Promise.all([loadWallets(), loadSettings(), loadStats(), loadTrades(), loadHistory(), checkBotStatus(), refreshLiveWallet(), loadSuggestedWallets()]);
+}
+
+async function loadSuggestedWallets() {
+  const list = document.getElementById('suggested-list');
+  if (!list) return;
+  const win = (document.getElementById('sw-window') && document.getElementById('sw-window').value) || '1w';
+  list.innerHTML = '<p style="color:var(--text-3);font-size:11px;">Fetching…</p>';
+  let res;
+  try {
+    res = await apiFetch(`/suggested-wallets?window=${win}&metric=profit&limit=10`);
+  } catch (e) {
+    console.error('suggested-wallets fetch failed', e);
+    list.innerHTML = `<p style="color:var(--red);font-size:11px;">Failed: ${esc(e.message)}</p>`;
+    return;
+  }
+  try {
+    const wallets = (res && res.wallets) || [];
+    if (!wallets.length) { list.innerHTML = '<p style="color:var(--text-3);">No suggestions.</p>'; return; }
+    list.innerHTML = wallets.map(w => {
+      const tracked = w.already_tracked && w.already_tracked[currentMode];
+      const profit = w.amount != null ? '$' + Number(w.amount).toLocaleString(undefined, {maximumFractionDigits: 0}) : '';
+      const short = w.address.slice(0, 6) + '…' + w.address.slice(-4);
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(w.name)}</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--text-3);">${short} · <span style="color:var(--green);">${profit}</span></div>
+          </div>
+          ${tracked
+            ? '<span style="font-size:11px;color:var(--text-3);padding:4px 8px;">✓ Added</span>'
+            : `<button class="btn-add" style="padding:4px 10px;font-size:11px;width:auto;margin:0;" onclick="copySuggestedWallet('${w.address}','${esc(w.name).replace(/'/g, "\\'")}')">Copy</button>`}
+        </div>`;
+    }).join('');
+  } catch (e) {
+    console.error('suggested-wallets render failed', e);
+    list.innerHTML = `<p style="color:var(--red);font-size:11px;">Render error: ${esc(e.message)}</p>`;
+  }
+}
+
+async function copySuggestedWallet(address, name) {
+  try {
+    await apiFetch('/wallets/add', 'POST', { mode: currentMode, wallet_address: address, nickname: name || 'Top performer' });
+    showToast(`Tracking ${name}`, 'success');
+    await Promise.all([loadWallets(), loadSuggestedWallets()]);
+  } catch (e) {
+    showToast(e.message || 'Failed to add wallet', 'error');
+  }
+}
+
+// ── Mode switch ──────────────────────────────────────────
+
+function switchMode(mode) {
+  currentMode = mode;
+  document.getElementById('btn-paper').className = 'mode-btn' + (mode === 'paper' ? ' active-paper' : '');
+  document.getElementById('btn-live').className = 'mode-btn' + (mode === 'live' ? ' active-live' : '');
+  const banner = document.getElementById('mode-banner');
+  banner.className = `mode-banner ${mode}`;
+  banner.innerHTML = mode === 'paper'
+    ? '<span>📄</span><span><strong>Paper Mode</strong> — Trades are simulated. No real money moves.</span>'
+    : '<span>🟢</span><span><strong>Live Mode</strong> — Real trades will be placed on-chain.</span>';
+
+  const panel = document.getElementById('live-wallet-panel');
+  if (panel) {
+    panel.style.display = mode === 'live' ? 'block' : 'none';
+    if (mode === 'live') {
+      document.getElementById('lw-disconnected').style.display = 'block';
+      document.getElementById('lw-connected').style.display = 'none';
+    }
+  }
+
+  if (mode === 'live') {
+    enforceLiveGate();   // block app until a key is stored
+  } else {
+    hideLiveGate();
+  }
+
+  loadAll();
+}
+
+// ── Live mode gate ──────────────────────────────────────
+async function enforceLiveGate() {
+  const gate = document.getElementById('live-gate');
+  if (!gate) return;
+  let hasKey = false;
+  try {
+    const s = await apiFetch('/user/private-key/status');
+    hasKey = !!s.has_key;
+  } catch (e) {
+    hasKey = false;  // fail closed — force key entry
+  }
+  if (hasKey) {
+    hideLiveGate();
+  } else {
+    gate.style.display = 'flex';
+    document.getElementById('gate-step-1').style.display = 'block';
+    const step2 = document.getElementById('gate-step-2');
+    if (step2) step2.style.display = 'none';
+    document.getElementById('gate-error').style.display = 'none';
+    document.getElementById('gate-pk-input').value = '';
+    setTimeout(() => document.getElementById('gate-pk-input').focus(), 50);
+  }
+}
+
+function hideLiveGate() {
+  const gate = document.getElementById('live-gate');
+  if (gate) gate.style.display = 'none';
+}
+
+function validatePrivateKey(raw) {
+  let pk = (raw || '').trim();
+  if (!pk) return { ok: false, msg: 'Paste a private key first.' };
+  if (pk.toLowerCase().startsWith('0x')) pk = pk.slice(2);
+  if (!/^[0-9a-fA-F]+$/.test(pk))
+    return { ok: false, msg: 'Key contains non-hex characters. Should be 64 chars 0–9 / a–f.' };
+  if (pk.length !== 64)
+    return { ok: false, msg: `Wrong length: got ${pk.length} chars, expected 64 (32 bytes).` };
+  if (/^0+$/.test(pk))
+    return { ok: false, msg: 'Key cannot be all zeros.' };
+  return { ok: true, normalized: '0x' + pk.toLowerCase() };
+}
+
+async function gateSaveKey() {
+  const input = document.getElementById('gate-pk-input');
+  const errEl = document.getElementById('gate-error');
+  const btn = document.getElementById('gate-save-btn');
+  errEl.style.display = 'none';
+
+  const v = validatePrivateKey(input.value);
+  if (!v.ok) { errEl.textContent = v.msg; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Verifying with Polymarket…';
+  try {
+    const r = await apiFetch('/user/private-key', 'PUT', { private_key: v.normalized });
+    input.value = '';
+    showToast('Live key verified: ' + r.eoa_address.slice(0, 8) + '…', 'success');
+    document.getElementById('gate-step-1').style.display = 'none';
+    const step2 = document.getElementById('gate-step-2');
+    if (step2) step2.style.display = 'block';
+  } catch (e) {
+    errEl.textContent = e.message || 'Could not save key';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Connect & enter Live mode';
+  }
+}
+
+async function gateApproveContracts() {
+  const btn = document.getElementById('gate-approve-btn');
+  btn.disabled = true; btn.textContent = 'Approving…';
+  try {
+    await apiFetch('/user/approve-contracts', 'POST');
+    showToast('Contracts approved', 'success');
+    gateFinish();
+  } catch (e) {
+    showToast(e.message || 'Approval failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Try Again';
+  }
+}
+
+function gateFinish() {
+  hideLiveGate();
+  refreshLiveWallet();
+  loadAll();
+}
+
+function gateCancel() {
+  hideLiveGate();
+  switchMode('paper');
+}
+
+// ── Bot control ──────────────────────────────────────────
+
+async function checkBotStatus() {
+  try {
+    const res = await apiFetch(`/bot/${currentMode}/status`);
+    setBotState(res.running);
+  } catch {}
+}
+
+async function toggleBot() {
+  const endpoint = botRunning ? `/bot/${currentMode}/stop` : `/bot/${currentMode}/start`;
+  try {
+    await apiFetch(endpoint, 'POST');
+    botRunning = !botRunning;
+    setBotState(botRunning);
+  } catch (e) {
+    showToast(e.message || 'Bot toggle failed', 'error');
+    checkBotStatus();
+  }
+}
+
+// ── Live wallet (private key + balance) ──────────────────
+async function refreshLiveWallet() {
+  const panel = document.getElementById('live-wallet-panel');
+  if (!panel) return;
+  panel.style.display = currentMode === 'live' ? 'block' : 'none';
+  if (currentMode !== 'live') return;
+
+  // Default to "disconnected" so the key input is always visible in live mode,
+  // even if the status call fails (e.g. DB column not migrated yet).
+  const connectedEl = document.getElementById('lw-connected');
+  const disconnectedEl = document.getElementById('lw-disconnected');
+  connectedEl.style.display = 'none';
+  disconnectedEl.style.display = 'block';
+
+  let hasKey = false, eoa = '';
+  try {
+    const s = await apiFetch('/user/private-key/status');
+    hasKey = !!s.has_key;
+    eoa = s.eoa_address || '';
+  } catch (e) {
+    showToast('Live status unavailable — showing key input. (' + e.message + ')', 'error');
+    return;
+  }
+
+  if (!hasKey) return;
+  connectedEl.style.display = 'block';
+  disconnectedEl.style.display = 'none';
+  document.getElementById('lw-addr').textContent = eoa.slice(0, 8) + '…' + eoa.slice(-6);
+  document.getElementById('lw-addr').title = eoa;
+  try {
+    const b = await apiFetch('/user/balance');
+    document.getElementById('lw-usdc').textContent = '$' + Number(b.usdc || 0).toFixed(2);
+    document.getElementById('lw-matic').textContent = Number(b.matic || 0).toFixed(4);
+  } catch (e) {
+    document.getElementById('lw-usdc').textContent = 'err';
+    document.getElementById('lw-matic').textContent = 'err';
+  }
+}
+
+async function saveLivePrivateKey() {
+  const input = document.getElementById('lw-pk-input');
+  const v = validatePrivateKey(input.value);
+  if (!v.ok) { showToast(v.msg, 'error'); return; }
+  const btn = document.getElementById('lw-save-btn');
+  btn.disabled = true; btn.textContent = 'Verifying…';
+  try {
+    const r = await apiFetch('/user/private-key', 'PUT', { private_key: v.normalized });
+    input.value = '';
+    showToast('Live key verified: ' + r.eoa_address.slice(0, 8) + '…', 'success');
+    await refreshLiveWallet();
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Connect key';
+  }
+}
+
+
+
+async function disconnectLiveKey() {
+  if (!confirm('Remove stored trading key? The live bot will stop.')) return;
+  try {
+    await apiFetch('/user/private-key', 'DELETE');
+    showToast('Live key removed', 'success');
+    await refreshLiveWallet();
+    checkBotStatus();
+    if (currentMode === 'live') enforceLiveGate();  // re-block until a new key is provided
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+function setBotState(running) {
+  botRunning = running;
+  const pill = document.getElementById('bot-pill');
+  const dot = document.getElementById('bot-dot');
+  const text = document.getElementById('bot-pill-text');
+  pill.className = 'bot-pill' + (running ? ' running' : '');
+  dot.className = 'bot-dot' + (running ? ' pulse' : '');
+  text.textContent = running ? 'Bot running' : 'Bot stopped';
+}
+
+// ── Wallets ──────────────────────────────────────────────
+
+async function loadWallets() {
+  const wallets = await apiFetch(`/wallets/${currentMode}`);
+  renderWallets(wallets);
+}
+
+function renderWallets(wallets) {
+  const list = document.getElementById('wallet-list');
+  if (!wallets.length) {
+    list.innerHTML = '<p style="font-size:12px;color:var(--text-3);margin-bottom:12px;">No wallets tracked yet.</p>';
+    return;
+  }
+  list.innerHTML = wallets.map(w => `
+    <div class="wallet-item">
+      <div class="wallet-avatar">${(w.nickname || 'W')[0].toUpperCase()}</div>
+      <div class="wallet-info">
+        <div class="wallet-name">${esc(w.nickname)}</div>
+        <div class="wallet-addr">${w.wallet_address.slice(0,8)}...${w.wallet_address.slice(-4)}</div>
+      </div>
+      <div style="margin-right:4px;">${w.enabled
+        ? '<span class="badge-on">On</span>'
+        : '<span class="badge-off">Off</span>'}</div>
+      <div class="wallet-actions">
+        <button class="icon-btn" title="Toggle" onclick="toggleWallet('${w.id}')">⇆</button>
+        <button class="icon-btn danger" title="Remove" onclick="removeWallet('${w.id}','${esc(w.nickname)}')">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addWallet() {
+  const addr = document.getElementById('new-wallet-addr').value.trim();
+  const name = document.getElementById('new-wallet-name').value.trim();
+  if (!addr || addr.length < 10) return showToast('Enter a valid wallet address', 'error');
+  await apiFetch('/wallets/add', 'POST', { mode: currentMode, wallet_address: addr, nickname: name || 'Unnamed' });
+  document.getElementById('new-wallet-addr').value = '';
+  document.getElementById('new-wallet-name').value = '';
+  loadWallets();
+  showToast('Wallet added', 'success');
+}
+
+async function toggleWallet(id) {
+  await apiFetch(`/wallets/${id}/toggle`, 'PATCH');
+  loadWallets();
+}
+
+async function removeWallet(id, name) {
+  walletToRemove = id;
+  // Check for open trades first
+  const res = await apiFetch('/wallets/remove', 'POST', {
+    mode: currentMode,
+    tracked_wallet_id: id,
+    force: false,
+  });
+  if (res.requires_confirmation) {
+    document.getElementById('remove-modal-body').textContent =
+      `"${name}" has ${res.open_trade_count} open trade(s). Removing this wallet will close them.`;
+    document.getElementById('remove-modal-trades').innerHTML =
+      res.open_trades.map(t => `<div class="modal-trade-item">• ${(t.market_question || 'Unknown market').slice(0,60)} — $${t.usdc_spent}</div>`).join('');
+    document.getElementById('remove-modal').classList.add('open');
+  } else {
+    loadWallets();
+    showToast('Wallet removed', 'success');
+  }
+}
+
+async function confirmRemoveWallet() {
+  await apiFetch('/wallets/remove', 'POST', {
+    mode: currentMode,
+    tracked_wallet_id: walletToRemove,
+    force: true,
+  });
+  closeRemoveModal();
+  loadWallets();
+  loadStats();
+  loadTrades();
+  showToast('Wallet removed and trades closed', 'success');
+}
+
+function closeRemoveModal() {
+  document.getElementById('remove-modal').classList.remove('open');
+  walletToRemove = null;
+}
+
+// ── Settings ─────────────────────────────────────────────
+
+async function loadSettings() {
+  const s = await apiFetch(`/settings/${currentMode}`);
+  document.getElementById('s-amount').value = s.copy_amount_usdc;
+  document.getElementById('s-min').value = s.min_original_trade_size;
+  document.getElementById('s-max').value = s.max_trades_per_wallet_per_day;
+  document.getElementById('s-poll').value = s.poll_interval_seconds;
+  const sw = document.getElementById('t-sells');
+  sw.className = 'toggle-switch' + (s.copy_sells ? ' on' : '');
+}
+
+function toggleSetting(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('on');
+}
+
+async function saveSettings() {
+  const body = {
+    mode: currentMode,
+    copy_amount_usdc: parseFloat(document.getElementById('s-amount').value),
+    min_original_trade_size: parseFloat(document.getElementById('s-min').value),
+    max_trades_per_wallet_per_day: parseInt(document.getElementById('s-max').value),
+    copy_sells: document.getElementById('t-sells').classList.contains('on'),
+    poll_interval_seconds: parseInt(document.getElementById('s-poll').value),
+  };
+  await apiFetch('/settings', 'PUT', body);
+  showToast('Settings saved', 'success');
+}
+
+// ── Stats ─────────────────────────────────────────────────
+
+async function loadStats() {
+  const s = await apiFetch(`/stats/${currentMode}`);
+  const pnl = s.total_pnl;
+  const roi = s.roi_pct;
+
+  document.getElementById('stat-invested').textContent = `$${s.total_invested.toFixed(2)}`;
+  const pnlEl = document.getElementById('stat-pnl');
+  pnlEl.textContent = (pnl >= 0 ? '+' : '') + `$${pnl.toFixed(2)}`;
+  pnlEl.className = 'stat-value ' + (pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : 'neutral');
+  const roiEl = document.getElementById('stat-roi');
+  roiEl.textContent = (roi >= 0 ? '+' : '') + `${roi.toFixed(1)}%`;
+  roiEl.className = 'stat-value ' + (roi > 0 ? 'pos' : roi < 0 ? 'neg' : 'neutral');
+  document.getElementById('stat-open').textContent = s.open_trades;
+  document.getElementById('stat-winrate').textContent = s.win_rate ? `${s.win_rate}%` : '—';
+  document.getElementById('stat-total').textContent = s.total_trades;
+}
+
+// ── Trades ────────────────────────────────────────────────
+
+async function loadTrades() {
+  document.getElementById('trades-spinner').style.display = '';
+  const trades = await apiFetch(`/trades/${currentMode}?limit=50`);
+  document.getElementById('trades-spinner').style.display = 'none';
+  renderTrades(trades);
+}
+
+function renderTrades(trades) {
+  const tbody = document.getElementById('trades-tbody');
+  if (!trades.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No trades yet. Add wallets and start the bot.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = trades.map(t => {
+    const pnl = t.pnl || 0;
+    const pnlClass = pnl > 0 ? 'pnl-pos' : pnl < 0 ? 'pnl-neg' : 'pnl-zero';
+    const pnlText = (pnl > 0 ? '+' : '') + `$${pnl.toFixed(2)}`;
+    const source = t.tracked_wallets?.nickname || t.source_wallet_address?.slice(0,8) + '...';
+    const timeStr = new Date(t.opened_at).toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    return `
+      <tr>
+        <td class="market-cell">
+          <div class="market-q" title="${esc(t.market_question || '')}">${esc((t.market_question || 'Unknown').slice(0, 45))}${(t.market_question || '').length > 45 ? '…' : ''}</div>
+          <div class="market-sub">${esc(t.outcome || '?')}</div>
+        </td>
+        <td class="mono-sm">${esc(source)}</td>
+        <td><span class="${t.outcome === 'YES' || t.side === 'BUY' ? 'badge-yes' : 'badge-no'}">${t.side}</span></td>
+        <td class="mono-sm">$${(t.price_at_copy || 0).toFixed(4)}</td>
+        <td class="mono-sm">${(t.shares || 0).toFixed(3)}</td>
+        <td class="mono-sm">$${(t.usdc_spent || 0).toFixed(2)}</td>
+        <td class="${pnlClass}">${pnlText}</td>
+        <td><span class="${t.status === 'open' ? 'badge-open' : 'badge-closed'}">${t.status}</span></td>
+        <td class="mono-sm">${timeStr}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ── History ───────────────────────────────────────────────
+
+async function loadHistory() {
+  document.getElementById('history-spinner').style.display = '';
+  // Fallback to empty array if fail
+  let history = await apiFetch(`/history/${currentMode}`);
+  if (!Array.isArray(history)) history = [];
+  document.getElementById('history-spinner').style.display = 'none';
+  renderHistory(history);
+}
+
+function renderHistory(history) {
+  const tbody = document.getElementById('history-tbody');
+  if (!history || !history.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No historical trades. Add wallets to see their recent activity.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = history.map(t => {
+    const source = t._nickname || (t._wallet ? t._wallet.slice(0,8) + '...' : 'Unknown');
+    let timeStr = '—';
+    const ts = t.timestamp || t.createdAt;
+    if (ts) {
+        // Assume API timestamp is in seconds, fallback logic handles both millis and seconds
+        const ms = ts > 10000000000 ? ts : ts * 1000;
+        timeStr = new Date(ms).toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+    const price = t.price || t.avgPrice || 0;
+    const size = t.size || t.assetSize || t.amount || 0;
+    const side = (t.type || '').toUpperCase();
+    return `
+      <tr>
+        <td class="market-cell">
+          <div class="market-q" title="${esc(t.title || t.question || t.market || '')}">${esc((t.title || t.question || t.market || 'Unknown Market').slice(0, 45))}</div>
+          <div class="market-sub">${esc(t.outcome || '?')}</div>
+        </td>
+        <td class="mono-sm">${esc(source)}</td>
+        <td><span class="${t.outcome === 'YES' || side === 'BUY' ? 'badge-yes' : 'badge-no'}">${side}</span></td>
+        <td class="mono-sm">$${parseFloat(price).toFixed(4)}</td>
+        <td class="mono-sm">${parseFloat(size).toFixed(3)} shares</td>
+        <td class="mono-sm">${timeStr}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// ── WebSocket ─────────────────────────────────────────────
+
+function connectWS() {
+  if (!token) return;
+  ws = new WebSocket(`ws://localhost:8000/ws/${token}`);
+  ws.onmessage = (e) => {
+    const event = JSON.parse(e.data);
+    if (event.type === 'new_trade' && event.mode === currentMode) {
+      loadStats();
+      loadTrades();
+      showToast(`New trade copied: ${(event.trade?.market_question || '').slice(0,40)}`, 'success');
+    }
+  };
+  ws.onclose = () => setTimeout(connectWS, 3000); // auto-reconnect
+}
+
+// ── Helpers ───────────────────────────────────────────────
+
+async function apiFetch(path, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  if (res.status === 401) { logout(); return {}; }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.detail || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  setTimeout(() => { t.className = ''; }, 3000);
+}
+
+// Auto-login if token exists
+if (token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    if (payload.exp * 1000 > Date.now()) {
+      const addr = payload.wallet;
+      document.getElementById('wallet-chip').textContent = addr.slice(0,6) + '...' + addr.slice(-4);
+      showApp();
+    } else {
+      localStorage.removeItem('pmct_token');
+    }
+  } catch { localStorage.removeItem('pmct_token'); }
+}
+</script>
+</body>
+</html>

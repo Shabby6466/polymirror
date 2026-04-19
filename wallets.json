@@ -1,0 +1,26 @@
+{
+  "wallets": [
+    {
+      "address": "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b",
+      "nickname": "Whale #1",
+      "enabled": true
+    },
+    {
+      "address": "0x5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f",
+      "nickname": "Trader X",
+      "enabled": true
+    },
+    {
+      "address": "0xdeadbeef00000000000000000000000000000001",
+      "nickname": "Degen #7",
+      "enabled": false
+    }
+  ],
+  "settings": {
+    "copy_amount_usdc": 20,
+    "min_original_trade_size": 10,
+    "max_trades_per_wallet_per_day": 5,
+    "copy_sells": true,
+    "poll_interval_seconds": 30
+  }
+}

@@ -1,0 +1,17 @@
+INFO:     Will watch for changes in these directories: ['/Users/Akmal/Desktop/untitled folder']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [23674] using WatchFiles
+INFO:     Started server process [23676]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'test_history.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [23676]
+INFO:     Started server process [23819]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-04-19 13:57:11,936 [INFO] HTTP Request: GET https://zlwlvebrbnjttfvcvocb.supabase.co/rest/v1/copied_trades?select=id%2Ctoken_id%2Cshares%2Cusdc_spent%2Cprice_at_copy&status=eq.open "HTTP/2 200 OK"
+2026-04-19 13:58:12,362 [INFO] HTTP Request: GET https://zlwlvebrbnjttfvcvocb.supabase.co/rest/v1/copied_trades?select=id%2Ctoken_id%2Cshares%2Cusdc_spent%2Cprice_at_copy&status=eq.open "HTTP/2 200 OK"
+2026-04-19 13:59:12,963 [INFO] HTTP Request: GET https://zlwlvebrbnjttfvcvocb.supabase.co/rest/v1/copied_trades?select=id%2Ctoken_id%2Cshares%2Cusdc_spent%2Cprice_at_copy&status=eq.open "HTTP/2 200 OK"
